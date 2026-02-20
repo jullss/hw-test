@@ -19,43 +19,9 @@ func Top10(s string) []string {
 	sl := strings.Fields(s)
 
 	for _, v := range sl {
-		hasLetterOrDigit := false
-
-		for _, r := range v {
-			if unicode.IsLetter(r) || unicode.IsNumber(r) {
-				hasLetterOrDigit = true
-				break
-			}
+		if word, ok := prepareWord(v); ok {
+			m[word]++
 		}
-
-		if !hasLetterOrDigit {
-			if len(v) > 1 {
-				m[v]++
-			}
-			continue
-		}
-
-		word := strings.TrimFunc(v, func(r rune) bool {
-			return !unicode.IsLetter(r) && !unicode.IsNumber(r)
-		})
-
-		if word == "" {
-			continue
-		}
-
-		isUpper := false
-		for _, r := range word {
-			if unicode.IsUpper(r) {
-				isUpper = true
-				break
-			}
-		}
-
-		if isUpper {
-			word = strings.ToLower(word)
-		}
-
-		m[word]++
 	}
 
 	tmp := make([]WordStat, 0, len(m))
@@ -83,4 +49,44 @@ func Top10(s string) []string {
 	}
 
 	return res
+}
+
+func prepareWord(word string) (string, bool) {
+	hasLetterOrDigit := false
+
+	for _, r := range word {
+		if unicode.IsLetter(r) || unicode.IsNumber(r) {
+			hasLetterOrDigit = true
+			break
+		}
+	}
+
+	if !hasLetterOrDigit {
+		if len(word) > 1 {
+			return word, true
+		}
+		return "", false
+	}
+
+	word = strings.TrimFunc(word, func(r rune) bool {
+		return !unicode.IsLetter(r) && !unicode.IsNumber(r)
+	})
+
+	if word == "" {
+		return "", false
+	}
+
+	isUpper := false
+	for _, r := range word {
+		if unicode.IsUpper(r) {
+			isUpper = true
+			break
+		}
+	}
+
+	if isUpper {
+		word = strings.ToLower(word)
+	}
+
+	return word, true
 }
