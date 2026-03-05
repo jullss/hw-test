@@ -48,4 +48,21 @@ func TestList(t *testing.T) {
 		}
 		require.Equal(t, []int{70, 80, 60, 40, 10, 30, 50}, elems)
 	})
+
+	t.Run("move to edges", func(t *testing.T) {
+		l := NewList()
+
+		e1 := l.PushFront(1) // [1]
+		l.MoveToFront(e1)
+		require.Equal(t, 1, l.Front().Value)
+
+		e2 := l.PushBack(2) // [1, 2]
+		l.MoveToFront(e2)   // [2, 1]
+
+		require.Equal(t, 2, l.Front().Value)
+		require.Equal(t, 1, l.Back().Value)
+		require.Equal(t, l.Front().Next, l.Back())
+		require.Nil(t, l.Back().Next)
+		require.Nil(t, l.Front().Prev)
+	})
 }
