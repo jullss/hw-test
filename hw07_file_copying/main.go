@@ -1,7 +1,9 @@
 package main
 
 import (
+	"errors"
 	"flag"
+	"io"
 	"os"
 )
 
@@ -20,7 +22,11 @@ func init() {
 func main() {
 	flag.Parse()
 
-	if err := Copy(from, to, offset, limit); err != nil {
+	err := Copy(from, to, offset, limit)
+	if err != nil {
+		if errors.Is(err, io.EOF) || errors.Is(err, io.ErrUnexpectedEOF) {
+			return
+		}
 		os.Exit(1)
 	}
 }
