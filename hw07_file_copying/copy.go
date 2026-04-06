@@ -2,10 +2,10 @@ package main
 
 import (
 	"errors"
+	"fmt"
 	"io"
 	"os"
-
-	"github.com/cheggaaa/pb"
+	"time"
 )
 
 var (
@@ -15,6 +15,38 @@ var (
 	ErrCannotOpenFile        = errors.New("cannot open source file")
 	ErrCannotCreateFile      = errors.New("cannot create file")
 )
+
+type ProgressBar struct {
+	reader  io.Reader
+	total   int64
+	counter int64
+}
+
+func (pb *ProgressBar) Read(p []byte) (int, error) {
+	limit := 500
+
+	if len(p) > limit {
+		p = p[:limit]
+	}
+
+	curCount, err := pb.reader.Read(p)
+
+	if curCount > 0 {
+		pb.counter += int64(curCount)
+		if pb.total > 0 {
+			perc := float64(pb.counter) * 100 / float64(pb.total)
+			fmt.Printf("\rLoading: %.2f%%", perc)
+
+			time.Sleep(500 * time.Millisecond)
+		}
+	}
+
+	if errors.Is(err, io.EOF) {
+		fmt.Println()
+	}
+
+	return curCount, err
+}
 
 func Copy(fromPath, toPath string, offset, limit int64) error {
 	fileInfo, err := os.Stat(fromPath)
@@ -55,20 +87,15 @@ func Copy(fromPath, toPath string, offset, limit int64) error {
 		totalBytes = fileSize - offset
 	}
 
-	bar := pb.New64(totalBytes)
-
-	bar.ShowCounters = true
-	bar.ShowSpeed = true
-
-	bar.Start()
-	defer bar.Finish()
-
-	barReader := bar.NewProxyReader(src)
+	pb := &ProgressBar{
+		reader: src,
+		total:  totalBytes,
+	}
 
 	if limit == 0 {
-		_, err = io.Copy(dst, barReader)
+		_, err = io.Copy(dst, pb)
 	} else {
-		_, err = io.CopyN(dst, barReader, limit)
+		_, err = io.CopyN(dst, pb, limit)
 	}
 
 	return err
