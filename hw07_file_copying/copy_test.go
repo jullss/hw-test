@@ -54,4 +54,20 @@ func TestCopy(t *testing.T) {
 			t.Errorf("Expected ErrOffsetExceedsFileSize, got %v", err)
 		}
 	})
+
+	t.Run("limit exceeds file size", func(t *testing.T) {
+		os.Remove(toPath)
+
+		limit := int64(len(str)) + 50
+
+		err := Copy(fromPath, toPath, 0, limit)
+		if err != nil {
+			t.Errorf("Unexpected error: %v", err)
+		}
+
+		result, _ := os.ReadFile(toPath)
+		if string(result) != str {
+			t.Errorf("Expected '%s', got '%s'", str, string(result))
+		}
+	})
 }

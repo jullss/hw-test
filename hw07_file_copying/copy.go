@@ -80,11 +80,9 @@ func Copy(fromPath, toPath string, offset, limit int64) error {
 		return err
 	}
 
-	var totalBytes int64
-	if limit > 0 {
+	totalBytes := fileSize - offset
+	if limit > 0 && limit < totalBytes {
 		totalBytes = limit
-	} else {
-		totalBytes = fileSize - offset
 	}
 
 	pb := &ProgressBar{
@@ -95,7 +93,7 @@ func Copy(fromPath, toPath string, offset, limit int64) error {
 	if limit == 0 {
 		_, err = io.Copy(dst, pb)
 	} else {
-		_, err = io.CopyN(dst, pb, limit)
+		_, err = io.CopyN(dst, pb, totalBytes)
 	}
 
 	return err
