@@ -181,6 +181,45 @@ func TestValidate(t *testing.T) {
 	}
 }
 
+func TestValidateFastFail(t *testing.T) {
+	tests := []struct {
+		in interface{}
+	}{
+		{
+			in: 123,
+		},
+		{
+			in: "hello",
+		},
+		{
+			in: []int{1, 2, 3},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run("fast error not a struct", func(t *testing.T) {
+			err := Validate(tt.in)
+
+			if !errors.Is(err, ErrNotStruct) {
+				t.Errorf("expected error to be %v, but got %v", ErrNotStruct, err)
+			}
+		})
+	}
+
+	t.Run("fast error invalid tag", func(t *testing.T) {
+		type FailConfig struct {
+			Score int `validate:"min:abc"`
+		}
+
+		bc := FailConfig{Score: 10}
+		err := Validate(bc)
+
+		if !errors.Is(err, ErrInvalidTag) {
+			t.Errorf("expected system error (ErrInvalidTag), but got %v", err)
+		}
+	})
+}
+
 func compareErrors(t *testing.T, got, want ValidationErrors) {
 	t.Helper()
 

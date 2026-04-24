@@ -18,13 +18,16 @@ type ValidationError struct {
 type ValidationErrors []ValidationError
 
 var (
+	ErrMinLimit = errors.New("value is less than min threshold")
+	ErrMaxLimit = errors.New("value is more than max threshold")
+	ErrInSet    = errors.New("value must be in allowed set")
+	ErrLen      = errors.New("value is not with allowed length")
+	ErrRegexp   = errors.New("does not match regexp")
+)
+
+var (
 	ErrNotStruct  = errors.New("should be a struct")
 	ErrInvalidTag = errors.New("invalid tag syntax")
-	ErrMinLimit   = errors.New("value is less than min threshold")
-	ErrMaxLimit   = errors.New("value is more than max threshold")
-	ErrInSet      = errors.New("value must be in allowed set")
-	ErrLen        = errors.New("value is not with allowed length")
-	ErrRegexp     = errors.New("does not match regexp")
 )
 
 func (v ValidationErrors) Error() string {
@@ -77,7 +80,15 @@ func Validate(v interface{}) error {
 		rules := strings.Split(tagVal, "|")
 
 		for _, rule := range rules {
-			ve = append(ve, processField(fieldVal, fieldType.Name, rule)...)
+			validErr, sysErr := processField(fieldVal, fieldType.Name, rule)
+
+			if sysErr != nil {
+				return sysErr
+			}
+
+			if len(validErr) > 0 {
+				ve = append(ve, validErr...)
+			}
 		}
 	}
 
@@ -88,28 +99,41 @@ func Validate(v interface{}) error {
 	return ve
 }
 
-func processField(fieldVal reflect.Value, fieldName string, rule string) []ValidationError {
-	var errors []ValidationError
+func processField(fieldVal reflect.Value, fieldName string, rule string) ([]ValidationError, error) {
+	var resErrors []ValidationError
 	kind := fieldVal.Kind()
 
 	//nolint:exhaustive
 	switch kind {
 	case reflect.Int:
-		if err := validateInt(fieldVal, rule); err != nil {
-			errors = append(errors, ValidationError{Field: fieldName, Err: err})
+		err := validateInt(fieldVal, rule)
+		if err != nil {
+			if errors.Is(err, ErrInvalidTag) {
+				return nil, err
+			}
+			resErrors = append(resErrors, ValidationError{Field: fieldName, Err: err})
 		}
 	case reflect.String:
-		if err := validateString(fieldVal, rule); err != nil {
-			errors = append(errors, ValidationError{Field: fieldName, Err: err})
+		err := validateString(fieldVal, rule)
+		if err != nil {
+			if errors.Is(err, ErrInvalidTag) {
+				return nil, err
+			}
+			resErrors = append(resErrors, ValidationError{Field: fieldName, Err: err})
 		}
 	case reflect.Slice:
-		errors = append(errors, validateSlice(fieldVal, fieldName, rule)...)
+		validErrs, sysErr := validateSlice(fieldVal, fieldName, rule)
+		if sysErr != nil {
+			return nil, sysErr
+		}
+
+		resErrors = append(resErrors, validErrs...)
 	}
 
-	return errors
+	return resErrors, nil
 }
 
-func validateSlice(fieldVal reflect.Value, fieldName string, rule string) []ValidationError {
+func validateSlice(fieldVal reflect.Value, fieldName string, rule string) ([]ValidationError, error) {
 	var ve []ValidationError
 	for i := 0; i < fieldVal.Len(); i++ {
 		elem := fieldVal.Index(i)
@@ -122,13 +146,17 @@ func validateSlice(fieldVal reflect.Value, fieldName string, rule string) []Vali
 		}
 
 		if err != nil {
+			if errors.Is(err, ErrInvalidTag) {
+				return ve, err
+			}
+
 			ve = append(ve, ValidationError{
 				Field: fmt.Sprintf("%s[%d]", fieldName, i),
 				Err:   err,
 			})
 		}
 	}
-	return ve
+	return ve, nil
 }
 
 func validateInt(v reflect.Value, tagVal string) error {
@@ -146,7 +174,7 @@ func validateInt(v reflect.Value, tagVal string) error {
 			return fmt.Errorf("%w: '%s'", ErrInvalidTag, ruleVal)
 		}
 		if value < int64(minV) {
-			return fmt.Errorf("%w: %d", ErrMinLimit, minV)
+			return ErrMinLimit
 		}
 	case "max":
 		maxV, err := strconv.Atoi(ruleVal)
@@ -154,7 +182,7 @@ func validateInt(v reflect.Value, tagVal string) error {
 			return fmt.Errorf("%w: '%s'", ErrInvalidTag, ruleVal)
 		}
 		if value > int64(maxV) {
-			return fmt.Errorf("%w: %d", ErrMaxLimit, maxV)
+			return ErrMaxLimit
 		}
 	case "in":
 		match := false
@@ -174,7 +202,7 @@ func validateInt(v reflect.Value, tagVal string) error {
 		}
 
 		if !match {
-			return fmt.Errorf("%w: [%s]", ErrInSet, ruleVal)
+			return ErrInSet
 		}
 	}
 
@@ -196,7 +224,7 @@ func validateString(v reflect.Value, tagVal string) error {
 			return fmt.Errorf("%w: '%s'", ErrInvalidTag, ruleVal)
 		}
 		if allowedLen != utf8.RuneCountInString(value) {
-			return fmt.Errorf("%w: %d", ErrLen, allowedLen)
+			return ErrLen
 		}
 	case "in":
 		match := false
@@ -210,7 +238,7 @@ func validateString(v reflect.Value, tagVal string) error {
 		}
 
 		if !match {
-			return fmt.Errorf("%w: [%s]", ErrInSet, ruleVal)
+			return ErrInSet
 		}
 	case "regexp":
 		re, err := regexp.Compile(ruleVal)
@@ -218,7 +246,7 @@ func validateString(v reflect.Value, tagVal string) error {
 			return fmt.Errorf("%w: '%s'", ErrInvalidTag, ruleVal)
 		}
 		if !re.MatchString(value) {
-			return fmt.Errorf("%w: %s", ErrRegexp, re)
+			return ErrRegexp
 		}
 	}
 
