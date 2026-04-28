@@ -1,9 +1,11 @@
+//go:build !bench
 // +build !bench
 
 package hw10programoptimization
 
 import (
 	"bytes"
+	"fmt"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -36,4 +38,44 @@ func TestGetDomainStat(t *testing.T) {
 		require.NoError(t, err)
 		require.Equal(t, DomainStat{}, result)
 	})
+
+	t.Run("empty input", func(t *testing.T) {
+		result, err := GetDomainStat(bytes.NewBufferString(""), "com")
+		require.NoError(t, err)
+		require.Equal(t, DomainStat{}, result)
+	})
+
+	t.Run("email without @", func(t *testing.T) {
+		badEmail := `{"Email":"invalid_email_no_at.com"}`
+		result, err := GetDomainStat(bytes.NewBufferString(badEmail), "com")
+		require.NoError(t, err)
+		require.Equal(t, DomainStat{}, result, "Should not panic or count emails without @")
+	})
+}
+
+func BenchmarkGetDomainStat(b *testing.B) {
+	data := generateBenchmarkData(100_000)
+	domain := "gmail.com"
+
+	b.ResetTimer()
+
+	for i := 0; i < b.N; i++ {
+		r := bytes.NewReader(data)
+
+		_, err := GetDomainStat(r, domain)
+		if err != nil {
+			b.Fatal(err)
+		}
+	}
+}
+
+func generateBenchmarkData(count int) []byte {
+	var buf bytes.Buffer
+
+	for i := 0; i < count; i++ {
+		line := fmt.Sprintf(`{"Id": %d, "Email": "user_%d@gmail.com"}`+"\n", i, i)
+		buf.WriteString(line)
+	}
+
+	return buf.Bytes()
 }
