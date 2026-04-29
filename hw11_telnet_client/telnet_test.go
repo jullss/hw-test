@@ -63,3 +63,30 @@ func TestTelnetClient(t *testing.T) {
 		wg.Wait()
 	})
 }
+
+func TestTelnetClientJunk(t *testing.T) {
+	serverConn, clientConn := net.Pipe()
+	out := &bytes.Buffer{}
+
+	client := &telnetClient{
+		out:  out,
+		conn: clientConn,
+	}
+
+	t.Run("receive_binary_and_special_chars", func(t *testing.T) {
+		junk := []byte{255, 0}
+		junk = append(junk, []byte("привет\n")...)
+
+		go func() {
+			serverConn.Write(junk)
+			serverConn.Close()
+		}()
+
+		err := client.Receive()
+		require.NoError(t, err)
+
+		require.Equal(t, junk, out.Bytes())
+
+		require.Contains(t, out.String(), "привет")
+	})
+}
