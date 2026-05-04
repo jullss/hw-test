@@ -2,20 +2,14 @@ package hw10programoptimization
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
-	"regexp"
 	"strings"
 )
 
 type User struct {
-	ID       int
-	Name     string
-	Username string
-	Email    string
-	Phone    string
-	Password string
-	Address  string
+	Email string
 }
 
 type DomainStat map[string]int
@@ -28,38 +22,38 @@ func GetDomainStat(r io.Reader, domain string) (DomainStat, error) {
 	return countDomains(u, domain)
 }
 
-type users [100_000]User
+type users []User
 
-func getUsers(r io.Reader) (result users, err error) {
-	content, err := io.ReadAll(r)
-	if err != nil {
-		return
-	}
+func getUsers(r io.Reader) (users, error) {
+	result := make(users, 0, 1000)
+	decoder := json.NewDecoder(r)
 
-	lines := strings.Split(string(content), "\n")
-	for i, line := range lines {
-		var user User
-		if err = json.Unmarshal([]byte(line), &user); err != nil {
-			return
+	for decoder.More() {
+		var u User
+		if err := decoder.Decode(&u); err != nil {
+			if errors.Is(err, io.EOF) {
+				break
+			}
+			return result, err
 		}
-		result[i] = user
+
+		result = append(result, u)
 	}
-	return
+
+	return result, nil
 }
 
 func countDomains(u users, domain string) (DomainStat, error) {
-	result := make(DomainStat)
+	result := make(DomainStat, 100)
+	suffix := "." + domain
 
-	for _, user := range u {
-		matched, err := regexp.Match("\\."+domain, []byte(user.Email))
-		if err != nil {
-			return nil, err
-		}
-
-		if matched {
-			num := result[strings.ToLower(strings.SplitN(user.Email, "@", 2)[1])]
-			num++
-			result[strings.ToLower(strings.SplitN(user.Email, "@", 2)[1])] = num
+	for i := 0; i < len(u); i++ {
+		if strings.HasSuffix(u[i].Email, suffix) {
+			at := strings.LastIndex(u[i].Email, "@")
+			if at != -1 {
+				d := strings.ToLower(u[i].Email[at+1:])
+				result[d]++
+			}
 		}
 	}
 	return result, nil
