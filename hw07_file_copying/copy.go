@@ -17,27 +17,27 @@ var (
 )
 
 type ProgressBar struct {
-	reader  io.Reader
-	total   int64
-	counter int64
+	reader   io.Reader
+	total    int64
+	counter  int64
+	lastPerc int
 }
 
 func (pb *ProgressBar) Read(p []byte) (int, error) {
-	limit := 500
-
-	if len(p) > limit {
-		p = p[:limit]
-	}
-
 	curCount, err := pb.reader.Read(p)
 
 	if curCount > 0 {
 		pb.counter += int64(curCount)
 		if pb.total > 0 {
-			perc := float64(pb.counter) * 100 / float64(pb.total)
-			fmt.Printf("\rLoading: %.2f%%", perc)
+			perc := int(float64(pb.counter) * 100 / float64(pb.total))
 
-			time.Sleep(500 * time.Millisecond)
+			if perc > pb.lastPerc {
+				fmt.Printf("\rLoading: %d%%", perc)
+
+				time.Sleep(100 * time.Millisecond)
+
+				pb.lastPerc = perc
+			}
 		}
 	}
 
@@ -51,7 +51,7 @@ func (pb *ProgressBar) Read(p []byte) (int, error) {
 func Copy(fromPath, toPath string, offset, limit int64) error {
 	fileInfo, err := os.Stat(fromPath)
 	if err != nil {
-		return ErrNoAccessFileInfo
+		return fmt.Errorf("%w: %w", ErrNoAccessFileInfo, err)
 	}
 
 	if !fileInfo.Mode().IsRegular() {
@@ -65,13 +65,13 @@ func Copy(fromPath, toPath string, offset, limit int64) error {
 
 	src, err := os.Open(fromPath)
 	if err != nil {
-		return ErrCannotOpenFile
+		return fmt.Errorf("%w: %w", ErrCannotOpenFile, err)
 	}
 	defer src.Close()
 
 	dst, err := os.Create(toPath)
 	if err != nil {
-		return ErrCannotCreateFile
+		return fmt.Errorf("%w: %w", ErrCannotCreateFile, err)
 	}
 	defer dst.Close()
 
