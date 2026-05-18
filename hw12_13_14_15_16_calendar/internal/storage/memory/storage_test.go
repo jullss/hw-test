@@ -74,7 +74,7 @@ func TestStorage_ConcurrencyAndBusinessErrors(t *testing.T) {
 		go func(n int) {
 			defer wg.Done()
 			id := fmt.Sprintf("unique-%d", n)
-			eventTime := baseTime.Add(time.Duration(n) * time.Hour)
+			eventTime := baseTime.Add(time.Duration(n+1) * time.Hour)
 
 			err := s.Create(ctx, &storage.Event{
 				ID:        id,
