@@ -7,8 +7,8 @@ LDFLAGS := -X main.release="develop" -X main.buildDate=$(shell date -u +%Y-%m-%d
 #Postrges
 POSTGRES_USER ?= postgres
 POSTGRES_PASSWORD ?= password
-POSTGRES_DB ?= backend
-POSTGRES_PORT ?= 5435
+POSTGRES_DB ?= calendar
+POSTGRES_PORT ?= 5432
 POSTGRES_CONTAINER := postgres-calendar
 
 #Rabbit
@@ -40,7 +40,10 @@ build:
 	go build -v -o $(BIN) -ldflags "$(LDFLAGS)" ./cmd/calendar
 
 run: build
-	$(BIN) -config ./configs/config.toml
+	$(BIN) -config ./configs/config.yaml
+
+migrate:
+	goose -dir migrations postgres "postgres://$(POSTGRES_USER):$(POSTGRES_PASSWORD)@localhost:$(POSTGRES_PORT)/$(POSTGRES_DB)?sslmode=disable" up
 
 build-img:
 	docker build \
@@ -55,7 +58,7 @@ version: build
 	$(BIN) version
 
 test:
-	go test -race ./internal/... ./pkg/...
+	go test -v -race ./internal/...
 
 install-lint-deps:
 	(which golangci-lint > /dev/null) || curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(shell go env GOPATH)/bin v1.57.2
