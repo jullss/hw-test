@@ -66,4 +66,7 @@ install-lint-deps:
 lint: install-lint-deps
 	$(shell go env GOPATH)/bin/golangci-lint run ./...
 
+generate:
+	go generate ./...
+
 .PHONY: build run build-img run-img version test lint

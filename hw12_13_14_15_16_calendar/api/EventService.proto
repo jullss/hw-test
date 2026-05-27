@@ -2,6 +2,75 @@ syntax = "proto3";
 
 package event;
 
+import "google/protobuf/timestamp.proto";
+import "google/protobuf/duration.proto";
+
+option go_package = "github.com/jullss/hw-test/hw12_13_14_15_calendar/internal/pb;pb";
+
+service CalendarService {
+    rpc CreateEvent (CreateEventRequest) returns (CreateEventResponse);
+    rpc UpdateEvent (UpdateEventRequest) returns (UpdateEventResponse);
+    rpc DeleteEvent (DeleteEventRequest) returns (DeleteEventResponse);
+    rpc ListDayEvent(ListDayRequest) returns (ListDayResponse);
+    rpc ListWeekEvent(ListWeekRequest) returns (ListWeekResponse);
+    rpc ListMonthEvent(ListMonthRequest) returns (ListMonthResponse);
+}
+
 message Event {
-    // TODO
+    string id = 1;
+    string user_id = 2;
+    string title = 3;
+    string desc = 4;
+    google.protobuf.Timestamp start_time = 5;
+    google.protobuf.Timestamp end_time = 6;
+    google.protobuf.Duration notify_in = 7;
+}
+
+message CreateEventRequest {
+    Event event = 1;
+}
+
+message CreateEventResponse {
+    string id = 1;
+}
+
+message UpdateEventRequest {
+    string id = 1;
+    Event event = 2;
+}
+
+message UpdateEventResponse {
+    string id = 1;
+}
+
+message DeleteEventRequest {
+    string id = 1;
+}
+
+message DeleteEventResponse {
+    string id = 1;
+}
+
+message ListDayRequest {
+    google.protobuf.Timestamp date = 1;
+}
+
+message ListDayResponse {
+    repeated Event events = 1;
+}
+
+message ListWeekRequest {
+    google.protobuf.Timestamp date = 1;
+}
+
+message ListWeekResponse {
+    repeated Event events = 1;
+}
+
+message ListMonthRequest {
+    google.protobuf.Timestamp date = 1;
+}
+
+message ListMonthResponse {
+    repeated Event events = 1;
 }
