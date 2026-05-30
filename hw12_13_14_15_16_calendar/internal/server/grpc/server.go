@@ -40,11 +40,11 @@ type Application interface {
 }
 
 func (s *Server) CreateEvent(ctx context.Context, req *pb.CreateEventRequest) (*pb.CreateEventResponse, error) {
-	s.log.Info("gRPC request: CreateEvent", "user_id", req.Event.UserId, "title", req.Event.Title)
-
 	if req.Event == nil {
 		return nil, status.Error(codes.InvalidArgument, "event data is required")
 	}
+
+	s.log.Info("gRPC request: CreateEvent", "user_id", req.Event.UserId, "title", req.Event.Title)
 
 	startTime := req.Event.StartTime.AsTime()
 	endTime := req.Event.EndTime.AsTime()
@@ -70,11 +70,11 @@ func (s *Server) CreateEvent(ctx context.Context, req *pb.CreateEventRequest) (*
 }
 
 func (s *Server) UpdateEvent(ctx context.Context, req *pb.UpdateEventRequest) (*pb.UpdateEventResponse, error) {
-	s.log.Info("gRPC request: UpdateEvent", "user_id", req.Event.UserId, "title", req.Event.Title)
-
 	if req.Event == nil {
 		return nil, status.Error(codes.InvalidArgument, "event data is required")
 	}
+
+	s.log.Info("gRPC request: UpdateEvent", "user_id", req.Event.UserId, "title", req.Event.Title)
 
 	startTime := req.Event.StartTime.AsTime()
 	endTime := req.Event.EndTime.AsTime()
@@ -101,11 +101,11 @@ func (s *Server) UpdateEvent(ctx context.Context, req *pb.UpdateEventRequest) (*
 }
 
 func (s *Server) DeleteEvent(ctx context.Context, req *pb.DeleteEventRequest) (*pb.DeleteEventResponse, error) {
-	s.log.Info("gRPC request: DeleteEvent", "id", req.Id)
-
 	if req.Id == "" {
 		return nil, status.Error(codes.InvalidArgument, "id is required")
 	}
+
+	s.log.Info("gRPC request: DeleteEvent", "id", req.Id)
 
 	if err := s.app.DeleteEvent(ctx, req.Id); err != nil {
 		s.log.Error("gRPC DeleteEvent: business logic failed", "err", err)
