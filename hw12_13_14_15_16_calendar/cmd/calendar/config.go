@@ -18,8 +18,9 @@ type LoggerConf struct {
 }
 
 type ListenConf struct {
-	Host string `yaml:"host"`
-	Port string `yaml:"port"`
+	Host     string `yaml:"host"`
+	Port     string `yaml:"port"`
+	GRPCPort string `yaml:"grpc_port"`
 }
 
 type StorageConf struct {

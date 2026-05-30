@@ -11,10 +11,13 @@ import (
 
 	"github.com/jullss/hw-test/hw12_13_14_15_calendar/internal/app"
 	"github.com/jullss/hw-test/hw12_13_14_15_calendar/internal/logger"
+	"github.com/jullss/hw-test/hw12_13_14_15_calendar/internal/pb"
+	internalgrpc "github.com/jullss/hw-test/hw12_13_14_15_calendar/internal/server/grpc"
 	internalhttp "github.com/jullss/hw-test/hw12_13_14_15_calendar/internal/server/http"
 	"github.com/jullss/hw-test/hw12_13_14_15_calendar/internal/storage"
 	memorystorage "github.com/jullss/hw-test/hw12_13_14_15_calendar/internal/storage/memory"
 	sqlstorage "github.com/jullss/hw-test/hw12_13_14_15_calendar/internal/storage/sql"
+	"google.golang.org/grpc"
 )
 
 var configFile string
@@ -64,11 +67,40 @@ func main() {
 
 	server := internalhttp.NewServer(logg, calendar)
 
+	grpcImpl := internalgrpc.NewServer(logg, calendar)
+	grpcLoggerInterceptor := func(
+		ctx context.Context,
+		req any,
+		info *grpc.UnaryServerInfo,
+		handler grpc.UnaryHandler,
+	) (any, error) {
+		startTime := time.Now()
+
+		resp, err := handler(ctx, req)
+
+		duration := time.Since(startTime)
+		if err != nil {
+			logg.Error("gRPC fail", "method", info.FullMethod, "duration", duration, "err", err)
+		} else {
+			logg.Info("gRPC success", "method", info.FullMethod, "duration", duration)
+		}
+
+		return resp, err
+	}
+
+	grpcServer := grpc.NewServer(
+		grpc.UnaryInterceptor(grpcLoggerInterceptor),
+	)
+	pb.RegisterCalendarServiceServer(grpcServer, grpcImpl)
+
 	go func() {
 		<-ctx.Done()
 
 		ctx, cancel := context.WithTimeout(context.Background(), time.Second*3)
 		defer cancel()
+
+		logg.Info("grpc server stopping")
+		grpcServer.GracefulStop()
 
 		if err := server.Stop(ctx); err != nil {
 			logg.Error("failed to stop http server: " + err.Error())
@@ -83,6 +115,21 @@ func main() {
 	}()
 
 	logg.Info("calendar is running...")
+
+	go func() {
+		grpcAddr := net.JoinHostPort(config.Listen.Host, config.Listen.GRPCPort)
+
+		lis, err := net.Listen("tcp", grpcAddr)
+		if err != nil {
+			logg.Error("failed to listen for grpc", "err", err)
+			return
+		}
+
+		logg.Info("grpc server starting", "addr", grpcAddr)
+		if err := grpcServer.Serve(lis); err != nil {
+			logg.Error("grpc server failed", "err", err)
+		}
+	}()
 
 	addr := net.JoinHostPort(config.Listen.Host, config.Listen.Port)
 	if err := server.Start(ctx, addr); err != nil {
