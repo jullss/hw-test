@@ -37,10 +37,12 @@ run-rabbit:
 	rabbitmq:management
 
 build:
-	go build -v -o $(BIN) -ldflags "$(LDFLAGS)" ./cmd/calendar
+	go build -v -o $(BIN) -ldflags "$(LDFLAGS)" ./cmd/calendar/
+	go build -v -o ./bin/calendar_scheduler ./cmd/calendar_scheduler/
+	go build -v -o ./bin/calendar_sender ./cmd/calendar_sender/
 
 run: build
-	$(BIN) -config ./configs/config.yaml
+	$(BIN) -config ./configs/calendar_config.yaml
 
 migrate:
 	goose -dir migrations postgres "postgres://$(POSTGRES_USER):$(POSTGRES_PASSWORD)@localhost:$(POSTGRES_PORT)/$(POSTGRES_DB)?sslmode=disable" up

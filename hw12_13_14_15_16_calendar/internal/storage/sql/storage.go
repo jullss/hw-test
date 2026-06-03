@@ -158,3 +158,24 @@ func (s *Storage) ListMonth(ctx context.Context, date time.Time) ([]storage.Even
 
 	return events, nil
 }
+
+func (s *Storage) CleanOldEvents(ctx context.Context, olderThan time.Time) error {
+	query := `DELETE FROM events WHERE end_time < $1`
+	_, err := s.db.ExecContext(ctx, query, olderThan)
+	return err
+}
+
+func (s *Storage) GetEventsToNotify(ctx context.Context) ([]storage.Event, error) {
+	query := `SELECT id, title, description, start_time, end_time, user_id, notify_in
+	          FROM events
+	          WHERE start_time - (notify_in / 1000000000 || ' second')::interval <= NOW()
+	          AND start_time >= NOW()`
+
+	events := make([]storage.Event, 0)
+	err := s.db.SelectContext(ctx, &events, query)
+	if err != nil {
+		return nil, err
+	}
+
+	return events, nil
+}
