@@ -4,6 +4,7 @@ logger:
 listen:
   host: "127.0.0.1"
   port: "8080"
+  grpc_port: "50051"
 
 storage:
   type: "memory"
