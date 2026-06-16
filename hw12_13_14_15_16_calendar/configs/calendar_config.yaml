@@ -2,10 +2,10 @@ logger:
   level: "info"
 
 listen:
-  host: "127.0.0.1"
-  port: "8080"
+  host: "0.0.0.0"
+  port: "8888"
   grpc_port: "50051"
 
 storage:
-  type: "memory"
+  type: "sql"
   dbUrl: "postgres://postgres:password@localhost:5432/calendar?sslmode=disable"

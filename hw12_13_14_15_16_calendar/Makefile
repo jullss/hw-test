@@ -4,16 +4,14 @@ DOCKER_IMG="calendar:develop"
 GIT_HASH := $(shell git log --format="%h" -n 1)
 LDFLAGS := -X main.release="develop" -X main.buildDate=$(shell date -u +%Y-%m-%dT%H:%M:%S) -X main.gitHash=$(GIT_HASH)
 
-#Postrges
 POSTGRES_USER ?= postgres
 POSTGRES_PASSWORD ?= password
 POSTGRES_DB ?= calendar
 POSTGRES_PORT ?= 5432
 POSTGRES_CONTAINER := postgres-calendar
 
-#Rabbit
-RABBIT_USER ?= rabbit
-RABBIT_PASSWORD ?= password
+RABBIT_USER ?= guest
+RABBIT_PASSWORD ?= guest
 RABBIT_PORT ?= 5672
 RABBIT_PORT_UI ?= 15672
 RABBIT_CONTAINER := rabbitmq
@@ -56,6 +54,20 @@ build-img:
 run-img: build-img
 	docker run $(DOCKER_IMG)
 
+up:
+	docker compose -f deployments/docker-compose.yaml up -d --build
+
+down:
+	docker compose -f deployments/docker-compose.yaml down
+
+integration-tests:
+	docker compose -f deployments/docker-compose.test.yaml up --build -d; \
+	docker compose -f deployments/docker-compose.test.yaml wait integration-tests; \
+	EXIT_CODE=$$?; \
+	docker compose -f deployments/docker-compose.test.yaml logs integration-tests; \
+	docker compose -f deployments/docker-compose.test.yaml down --volumes; \
+	exit $$EXIT_CODE
+
 version: build
 	$(BIN) version
 
@@ -71,4 +83,4 @@ lint: install-lint-deps
 generate:
 	go generate ./...
 
-.PHONY: build run build-img run-img version test lint
+.PHONY: build run build-img run-img version test lint up down integration-tests

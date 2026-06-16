@@ -54,8 +54,14 @@ func (s *Storage) Close(ctx context.Context) error {
 }
 
 func (s *Storage) Create(ctx context.Context, event *storage.Event) error {
-	query := `INSERT INTO events (id, title, description, start_time, end_time, user_id, notify_in)
-	          VALUES (:id, :title, :description, :start_time, :end_time, :user_id, :notify_in)`
+	var query string
+	if event.ID == "" {
+		query = `INSERT INTO events (title, description, start_time, end_time, user_id, notify_in)
+		         VALUES (:title, :description, :start_time, :end_time, :user_id, :notify_in)`
+	} else {
+		query = `INSERT INTO events (id, title, description, start_time, end_time, user_id, notify_in)
+		         VALUES (:id, :title, :description, :start_time, :end_time, :user_id, :notify_in)`
+	}
 
 	_, err := s.db.NamedExecContext(ctx, query, event)
 	if err != nil {
