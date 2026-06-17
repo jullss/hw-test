@@ -18,8 +18,9 @@ type SenderConfig struct {
 		Level string `yaml:"level"`
 	} `yaml:"logger"`
 	RabbitMQ struct {
-		URL   string `yaml:"url"`
-		Queue string `yaml:"queue_name"`
+		URL       string `yaml:"url"`
+		Queue     string `yaml:"queue_name"`
+		SentQueue string `yaml:"sent_queue_name"`
 	} `yaml:"rabbitmq"`
 }
 
@@ -56,6 +57,17 @@ func main() {
 	}
 	defer rabbitClient.Close()
 
+	sentQueueName := config.RabbitMQ.SentQueue
+	if sentQueueName == "" {
+		sentQueueName = config.RabbitMQ.Queue + "_sent"
+	}
+	sentClient, err := queue.NewRabbitClient(config.RabbitMQ.URL, sentQueueName)
+	if err != nil {
+		logg.Error("failed to connect to rabbitmq for sent queue", "err", err)
+		os.Exit(1)
+	}
+	defer sentClient.Close()
+
 	var consumer queue.Consumer = rabbitClient
 	msgs, err := consumer.Consume(ctx)
 	if err != nil {
@@ -79,6 +91,13 @@ func main() {
 				"user_id", msg.UserID,
 				"date", msg.Date.Format("2006-01-02 15:04:05"),
 			)
+
+			if err := sentClient.Publish(ctx, msg); err != nil {
+				logg.Error("failed to publish to sent queue", "event_id", msg.EventID, "err", err)
+			} else {
+				logg.Info("notification status published to sent queue", "event_id", msg.EventID)
+			}
+
 		case <-ctx.Done():
 			logg.Info("sender is stopping gracefully...")
 			return

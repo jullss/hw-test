@@ -51,11 +51,6 @@ func main() {
 			os.Exit(1)
 		}
 
-		if err := dbRepo.Migrate(ctx); err != nil {
-			logg.Error("failed to run migrations", "err", err)
-			os.Exit(1)
-		}
-
 		repo = dbRepo
 		logg.Info("using sql storage")
 	} else {
