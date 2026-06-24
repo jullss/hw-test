@@ -1,0 +1,60 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "calendar-chart.fullname" . }}-calendar
+  labels:
+    {{- include "calendar-chart.labels" . | nindent 4 }}
+    app.kubernetes.io/name: calendar
+    app.kubernetes.io/instance: {{ .Release.Name }}
+spec:
+  type: {{ .Values.calendar.service.type }}
+  selector:
+    app.kubernetes.io/name: calendar
+    {{- include "calendar-chart.selectorLabels" . | nindent 4 }}
+  ports:
+    - name: http
+      port: {{ .Values.calendar.service.httpPort }}
+      targetPort: http
+      protocol: TCP
+    - name: grpc
+      port: {{ .Values.calendar.service.grpcPort }}
+      targetPort: grpc
+      protocol: TCP
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "calendar-chart.fullname" . }}-scheduler
+  labels:
+    {{- include "calendar-chart.labels" . | nindent 4 }}
+    app.kubernetes.io/name: scheduler
+    app.kubernetes.io/instance: {{ .Release.Name }}
+spec:
+  type: ClusterIP
+  selector:
+    app.kubernetes.io/name: scheduler
+    {{- include "calendar-chart.selectorLabels" . | nindent 4 }}
+  ports:
+    - name: http
+      port: 8080
+      targetPort: 8080
+      protocol: TCP
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "calendar-chart.fullname" . }}-sender
+  labels:
+    {{- include "calendar-chart.labels" . | nindent 4 }}
+    app.kubernetes.io/name: sender
+    app.kubernetes.io/instance: {{ .Release.Name }}
+spec:
+  type: ClusterIP
+  selector:
+    app.kubernetes.io/name: sender
+    {{- include "calendar-chart.selectorLabels" . | nindent 4 }}
+  ports:
+    - name: http
+      port: 8080
+      targetPort: 8080
+      protocol: TCP
