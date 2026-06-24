@@ -1,0 +1,179 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "calendar-chart.fullname" . }}-calendar
+  labels:
+    {{- include "calendar-chart.labels" . | nindent 4 }}
+    app.kubernetes.io/name: calendar
+    app.kubernetes.io/instance: {{ .Release.Name }}
+spec:
+  replicas: {{ .Values.calendar.replicaCount }}
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: calendar
+      {{- include "calendar-chart.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: calendar
+        {{- include "calendar-chart.selectorLabels" . | nindent 8 }}
+    spec:
+      serviceAccountName: {{ include "calendar-chart.serviceAccountName" . }}
+      containers:
+        - name: calendar
+          image: "{{ .Values.calendar.image.repository }}:{{ .Values.calendar.image.tag }}"
+          imagePullPolicy: {{ .Values.calendar.image.pullPolicy }}
+          ports:
+            - name: http
+              containerPort: {{ .Values.calendar.service.httpPort }}
+              protocol: TCP
+            - name: grpc
+              containerPort: {{ .Values.calendar.service.grpcPort }}
+              protocol: TCP
+          env:
+            - name: CALENDAR_LOGGER_LEVEL
+              value: {{ .Values.calendar.env.loggerLevel | quote }}
+            - name: CALENDAR_LISTEN_HOST
+              value: "0.0.0.0"
+            - name: CALENDAR_LISTEN_PORT
+              value: {{ .Values.calendar.service.httpPort | quote }}
+            - name: CALENDAR_LISTEN_GRPC_PORT
+              value: {{ .Values.calendar.service.grpcPort | quote }}
+            - name: CALENDAR_STORAGE_TYPE
+              value: {{ .Values.calendar.env.storageType | quote }}
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "calendar-chart.postgresSecret" . }}
+                  key: {{ .Values.postgresql.secretKey }}
+            - name: CALENDAR_STORAGE_DBURL
+              value: "postgres://{{ .Values.postgresql.user }}:$(POSTGRES_PASSWORD)@{{ .Values.postgresql.host }}:{{ .Values.postgresql.port }}/{{ .Values.postgresql.database }}?sslmode=disable"
+          resources:
+            {{- toYaml .Values.calendar.resources | nindent 12 }}
+      {{- with .Values.calendar.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.calendar.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.calendar.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "calendar-chart.fullname" . }}-scheduler
+  labels:
+    {{- include "calendar-chart.labels" . | nindent 4 }}
+    app.kubernetes.io/name: scheduler
+    app.kubernetes.io/instance: {{ .Release.Name }}
+spec:
+  replicas: {{ .Values.scheduler.replicaCount }}
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: scheduler
+      {{- include "calendar-chart.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: scheduler
+        {{- include "calendar-chart.selectorLabels" . | nindent 8 }}
+    spec:
+      serviceAccountName: {{ include "calendar-chart.serviceAccountName" . }}
+      containers:
+        - name: scheduler
+          image: "{{ .Values.scheduler.image.repository }}:{{ .Values.scheduler.image.tag }}"
+          imagePullPolicy: {{ .Values.scheduler.image.pullPolicy }}
+          env:
+            - name: SCHEDULER_LOGGER_LEVEL
+              value: {{ .Values.scheduler.env.loggerLevel | quote }}
+            - name: SCHEDULER_SCAN_INTERVAL
+              value: {{ .Values.scheduler.env.scanInterval | quote }}
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "calendar-chart.postgresSecret" . }}
+                  key: {{ .Values.postgresql.secretKey }}
+            - name: SCHEDULER_STORAGE_DBURL
+              value: "postgres://{{ .Values.postgresql.user }}:$(POSTGRES_PASSWORD)@{{ .Values.postgresql.host }}:{{ .Values.postgresql.port }}/{{ .Values.postgresql.database }}?sslmode=disable"
+            - name: RABBITMQ_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "calendar-chart.rabbitmqSecret" . }}
+                  key: {{ .Values.rabbitmq.secretKey }}
+            - name: SCHEDULER_RABBITMQ_URL
+              value: "amqp://{{ .Values.rabbitmq.user }}:$(RABBITMQ_PASSWORD)@{{ .Values.rabbitmq.host }}:{{ .Values.rabbitmq.port }}/"
+            - name: SCHEDULER_RABBITMQ_QUEUE
+              value: {{ .Values.rabbitmq.queueName | quote }}
+          resources:
+            {{- toYaml .Values.scheduler.resources | nindent 12 }}
+      {{- with .Values.scheduler.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.scheduler.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.scheduler.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "calendar-chart.fullname" . }}-sender
+  labels:
+    {{- include "calendar-chart.labels" . | nindent 4 }}
+    app.kubernetes.io/name: sender
+    app.kubernetes.io/instance: {{ .Release.Name }}
+spec:
+  replicas: {{ .Values.sender.replicaCount }}
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: sender
+      {{- include "calendar-chart.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: sender
+        {{- include "calendar-chart.selectorLabels" . | nindent 8 }}
+    spec:
+      serviceAccountName: {{ include "calendar-chart.serviceAccountName" . }}
+      containers:
+        - name: sender
+          image: "{{ .Values.sender.image.repository }}:{{ .Values.sender.image.tag }}"
+          imagePullPolicy: {{ .Values.sender.image.pullPolicy }}
+          env:
+            - name: SENDER_LOGGER_LEVEL
+              value: {{ .Values.sender.env.loggerLevel | quote }}
+            - name: RABBITMQ_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "calendar-chart.rabbitmqSecret" . }}
+                  key: {{ .Values.rabbitmq.secretKey }}
+            - name: SENDER_RABBITMQ_URL
+              value: "amqp://{{ .Values.rabbitmq.user }}:$(RABBITMQ_PASSWORD)@{{ .Values.rabbitmq.host }}:{{ .Values.rabbitmq.port }}/"
+            - name: SENDER_RABBITMQ_QUEUE
+              value: {{ .Values.rabbitmq.queueName | quote }}
+            - name: SENDER_RABBITMQ_SENT_QUEUE
+              value: {{ .Values.rabbitmq.sentQueueName | quote }}
+          resources:
+            {{- toYaml .Values.sender.resources | nindent 12 }}
+      {{- with .Values.sender.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.sender.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.sender.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}

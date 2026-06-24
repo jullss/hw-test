@@ -1,0 +1,106 @@
+global:
+  imageRegistry: ""
+  imagePullSecrets: []
+
+calendar:
+  replicaCount: 1
+  image:
+    repository: calendar-app
+    tag: "latest"
+    pullPolicy: IfNotPresent
+  service:
+    type: ClusterIP
+    httpPort: 8888
+    grpcPort: 50051
+  env:
+    loggerLevel: "info"
+    storageType: "sql"
+  resources:
+    requests:
+      cpu: "100m"
+      memory: "128Mi"
+    limits:
+      cpu: "500m"
+      memory: "256Mi"
+  nodeSelector: {}
+  tolerations: []
+  affinity: {}
+
+scheduler:
+  replicaCount: 1
+  image:
+    repository: calendar-scheduler
+    tag: "latest"
+    pullPolicy: IfNotPresent
+  env:
+    loggerLevel: "info"
+    scanInterval: "5s"
+  resources:
+    requests:
+      cpu: "50m"
+      memory: "64Mi"
+    limits:
+      cpu: "200m"
+      memory: "128Mi"
+  nodeSelector: {}
+  tolerations: []
+  affinity: {}
+
+sender:
+  replicaCount: 1
+  image:
+    repository: calendar-sender
+    tag: "latest"
+    pullPolicy: IfNotPresent
+  env:
+    loggerLevel: "info"
+  resources:
+    requests:
+      cpu: "50m"
+      memory: "64Mi"
+    limits:
+      cpu: "200m"
+      memory: "128Mi"
+  nodeSelector: {}
+  tolerations: []
+  affinity: {}
+
+postgresql:
+  host: "postgres"
+  port: 5432
+  database: "calendar"
+  user: "postgres"
+  existingSecret: ""
+  secretKey: "postgres-password"
+
+rabbitmq:
+  host: "rabbitmq"
+  port: 5672
+  user: "guest"
+  existingSecret: ""
+  secretKey: "rabbitmq-password"
+  queueName: "calendar_notifications"
+  sentQueueName: "calendar_notifications_sent"
+
+secrets:
+  postgresPassword: "password"
+  rabbitmqPassword: "guest"
+
+ingress:
+  enabled: true
+  className: "nginx"
+  annotations:
+    nginx.ingress.kubernetes.io/rewrite-target: /
+  hosts:
+    - host: calendar.local
+      paths:
+        - path: /
+          pathType: Prefix
+          service: calendar
+          port: 8888
+  tls: []
+
+serviceAccount:
+  create: true
+  name: ""
+  annotations: {}
